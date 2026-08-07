@@ -1,5 +1,397 @@
 <!doctype html>
 <html lang="ja">
-<head><meta charset="utf-8"><title>習慣トラッカー</title></head>
-<body><h1>習慣トラッカー</h1><p>builder がこのファイルを実装で置き換えます。</p></body>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>習慣トラッカー</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232a7a62'/%3E%3Crect x='7' y='8' width='18' height='17' rx='2.5' fill='%23e8f5f0'/%3E%3Cpath d='M11 7.5h3v3h-3zm7 0h3v3h-3z' fill='%232a7a62'/%3E%3Cpath d='M12.2 18.2l2.4 2.4 5.2-5.2' fill='none' stroke='%232a7a62' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <style>
+    :root {
+      --bg-top: #d9ebe4;
+      --bg-bottom: #f3efe6;
+      --surface: #ffffffcc;
+      --ink: #1a2e28;
+      --muted: #5a726a;
+      --accent: #2a7a62;
+      --accent-hover: #216350;
+      --danger: #a33d3d;
+      --danger-hover: #862f2f;
+      --dot-empty: #c5d4ce;
+      --shadow: 0 10px 30px rgba(26, 46, 40, 0.08);
+      --radius: 14px;
+      --font: "Segoe UI", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", Meiryo, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-family: var(--font);
+      color: var(--ink);
+      background:
+        radial-gradient(ellipse 80% 50% at 20% 0%, #cfe8de 0%, transparent 55%),
+        radial-gradient(ellipse 70% 45% at 90% 10%, #f0e4d2 0%, transparent 50%),
+        linear-gradient(180deg, var(--bg-top), var(--bg-bottom));
+    }
+
+    .app {
+      width: min(100% - 2rem, 480px);
+      margin: 2.5rem auto 1rem;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    h1 {
+      margin: 0 0 0.35rem;
+      font-size: 1.75rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .subtitle {
+      margin: 0 0 1.5rem;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .add-form {
+      display: flex;
+      gap: 0.6rem;
+      margin-bottom: 1.25rem;
+    }
+
+    #habit-input {
+      flex: 1;
+      min-width: 0;
+      padding: 0.75rem 0.9rem;
+      border: 1.5px solid #b7cdc4;
+      border-radius: 10px;
+      background: #fff;
+      font: inherit;
+      color: var(--ink);
+      outline: none;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    #habit-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(42, 122, 98, 0.18);
+    }
+
+    #add-btn {
+      padding: 0.75rem 1.1rem;
+      border: none;
+      border-radius: 10px;
+      background: var(--accent);
+      color: #fff;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s ease, transform 0.1s ease;
+    }
+
+    #add-btn:hover { background: var(--accent-hover); }
+    #add-btn:active { transform: translateY(1px); }
+
+    #habit-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.7rem;
+    }
+
+    .habit-item {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      grid-template-rows: auto auto;
+      column-gap: 0.75rem;
+      row-gap: 0.45rem;
+      align-items: center;
+      padding: 0.9rem 1rem;
+      background: var(--surface);
+      backdrop-filter: blur(6px);
+      border: 1px solid #d5e4de;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .habit-item input[type="checkbox"] {
+      grid-row: 1 / 3;
+      width: 1.25rem;
+      height: 1.25rem;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    .habit-name {
+      font-weight: 600;
+      font-size: 1.05rem;
+      word-break: break-word;
+    }
+
+    .meta {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      flex-wrap: wrap;
+    }
+
+    .history-dots {
+      display: flex;
+      gap: 0.28rem;
+      align-items: center;
+    }
+
+    .dot {
+      width: 0.55rem;
+      height: 0.55rem;
+      border-radius: 50%;
+      border: 1.5px solid var(--dot-empty);
+      background: transparent;
+    }
+
+    .dot.done {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .streak-badge {
+      font-size: 0.78rem;
+      color: var(--accent);
+      font-weight: 600;
+      letter-spacing: 0.01em;
+    }
+
+    .delete-btn {
+      grid-row: 1 / 3;
+      align-self: center;
+      padding: 0.4rem 0.65rem;
+      border: 1px solid #e0c8c8;
+      border-radius: 8px;
+      background: #fff;
+      color: var(--danger);
+      font: inherit;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+
+    .delete-btn:hover {
+      background: var(--danger);
+      color: #fff;
+      border-color: var(--danger);
+    }
+
+    #empty-state {
+      margin: 1.5rem 0 0;
+      padding: 1.5rem 1rem;
+      text-align: center;
+      color: var(--muted);
+      background: var(--surface);
+      border: 1px dashed #b7cdc4;
+      border-radius: var(--radius);
+    }
+
+    #empty-state[hidden] { display: none; }
+
+    footer {
+      margin-top: 3rem;
+      text-align: center;
+      font-size: 0.8rem;
+      opacity: 0.6;
+    }
+
+    footer a { color: inherit; }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <h1>習慣トラッカー</h1>
+    <p class="subtitle">毎日の小さな一歩を、ここに残す</p>
+
+    <form class="add-form" id="add-form">
+      <input id="habit-input" type="text" placeholder="習慣名（例: 運動）" autocomplete="off" maxlength="80" aria-label="習慣名">
+      <button id="add-btn" type="submit">追加</button>
+    </form>
+
+    <ul id="habit-list" aria-label="習慣一覧"></ul>
+    <p id="empty-state">習慣を追加して始めましょう</p>
+
+    <footer style="margin-top:3rem;text-align:center;font-size:.8rem;opacity:.6">
+      <a href="https://apps.jozo.beer" style="color:inherit">apps.jozo.beer</a>
+    </footer>
+  </main>
+
+  <script>
+    const STORAGE_KEY = "habit-tracker:v1";
+
+    function todayKey(date = new Date()) {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, "0");
+      const d = String(date.getDate()).padStart(2, "0");
+      return `${y}-${m}-${d}`;
+    }
+
+    function emptyState() {
+      return { habits: [], checks: {} };
+    }
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return emptyState();
+        const parsed = JSON.parse(raw);
+        if (!parsed || !Array.isArray(parsed.habits) || typeof parsed.checks !== "object" || parsed.checks === null) {
+          return emptyState();
+        }
+        return { habits: parsed.habits, checks: parsed.checks };
+      } catch {
+        return emptyState();
+      }
+    }
+
+    function saveState(state) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    function recentDays(n) {
+      const keys = [];
+      const base = new Date();
+      base.setHours(12, 0, 0, 0);
+      for (let i = n - 1; i >= 0; i--) {
+        const d = new Date(base);
+        d.setDate(base.getDate() - i);
+        keys.push(todayKey(d));
+      }
+      return keys;
+    }
+
+    function isCheckedOn(state, id, dayKey) {
+      const ids = state.checks[dayKey];
+      return Array.isArray(ids) && ids.includes(id);
+    }
+
+    function streak(state, id) {
+      const startOffset = isCheckedOn(state, id, todayKey()) ? 0 : 1;
+      let count = 0;
+      const base = new Date();
+      base.setHours(12, 0, 0, 0);
+      for (let i = startOffset; ; i++) {
+        const d = new Date(base);
+        d.setDate(base.getDate() - i);
+        if (!isCheckedOn(state, id, todayKey(d))) break;
+        count += 1;
+      }
+      return count;
+    }
+
+    let state = loadState();
+
+    function addHabit(name) {
+      const trimmed = name.trim();
+      if (!trimmed) return;
+      state.habits.push({ id: `h_${Date.now()}`, name: trimmed });
+      saveState(state);
+      render();
+    }
+
+    function toggleCheck(id, checked) {
+      const day = todayKey();
+      const ids = Array.isArray(state.checks[day]) ? state.checks[day].slice() : [];
+      const idx = ids.indexOf(id);
+      if (checked && idx === -1) ids.push(id);
+      if (!checked && idx !== -1) ids.splice(idx, 1);
+      if (ids.length === 0) delete state.checks[day];
+      else state.checks[day] = ids;
+      saveState(state);
+      render();
+    }
+
+    function deleteHabit(id) {
+      state.habits = state.habits.filter((h) => h.id !== id);
+      for (const day of Object.keys(state.checks)) {
+        state.checks[day] = state.checks[day].filter((hid) => hid !== id);
+        if (state.checks[day].length === 0) delete state.checks[day];
+      }
+      saveState(state);
+      render();
+    }
+
+    function render() {
+      const list = document.getElementById("habit-list");
+      const empty = document.getElementById("empty-state");
+      list.replaceChildren();
+
+      const hasHabits = state.habits.length > 0;
+      empty.hidden = hasHabits;
+
+      const days = recentDays(7);
+      const today = todayKey();
+
+      for (const habit of state.habits) {
+        const li = document.createElement("li");
+        li.className = "habit-item";
+        li.dataset.habitId = habit.id;
+
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.checked = isCheckedOn(state, habit.id, today);
+        checkbox.setAttribute("aria-label", `${habit.name}を今日実行済みにする`);
+        checkbox.addEventListener("change", () => toggleCheck(habit.id, checkbox.checked));
+
+        const nameEl = document.createElement("span");
+        nameEl.className = "habit-name";
+        nameEl.textContent = habit.name;
+
+        const dots = document.createElement("div");
+        dots.className = "history-dots";
+        dots.setAttribute("aria-label", "直近7日間の実行履歴");
+        for (const day of days) {
+          const dot = document.createElement("span");
+          dot.className = "dot" + (isCheckedOn(state, habit.id, day) ? " done" : "");
+          dots.appendChild(dot);
+        }
+
+        const streakCount = streak(state, habit.id);
+        const badge = document.createElement("span");
+        badge.className = "streak-badge";
+        badge.textContent = streakCount > 0 ? `${streakCount}日連続` : "まだ連続なし";
+
+        const meta = document.createElement("div");
+        meta.className = "meta";
+        meta.append(dots, badge);
+
+        const mid = document.createElement("div");
+        mid.append(nameEl, meta);
+
+        const del = document.createElement("button");
+        del.type = "button";
+        del.className = "delete-btn";
+        del.textContent = "削除";
+        del.setAttribute("aria-label", `${habit.name}を削除`);
+        del.addEventListener("click", () => deleteHabit(habit.id));
+
+        li.append(checkbox, mid, del);
+        list.appendChild(li);
+      }
+    }
+
+    document.getElementById("add-form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const input = document.getElementById("habit-input");
+      addHabit(input.value);
+      input.value = "";
+      input.focus();
+    });
+
+    render();
+  </script>
+</body>
 </html>
