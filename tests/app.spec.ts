@@ -145,3 +145,35 @@ test("直近7日の履歴ドットと連続実行日数が表示される", asyn
 
   await expect(page.locator(".habit-item .streak-badge")).toContainText("3日連続");
 });
+
+test("meta description があり空でない", async ({ page }) => {
+  await page.goto(APP_URL);
+  const content = await page.locator('meta[name="description"]').getAttribute("content");
+  expect(content?.trim()).toBeTruthy();
+});
+
+test("JSON-LD に WebApplication の必須フィールドがある", async ({ page }) => {
+  await page.goto(APP_URL);
+  const raw = await page.locator('script[type="application/ld+json"]').textContent();
+  expect(raw?.trim()).toBeTruthy();
+
+  const parsed = JSON.parse(raw!);
+  const nodes = Array.isArray(parsed) ? parsed : [parsed];
+  const app = nodes.find((node) => {
+    const type = node?.["@type"];
+    return type === "WebApplication" || (Array.isArray(type) && type.includes("WebApplication"));
+  });
+
+  expect(app).toBeTruthy();
+  expect(String(app.name ?? "").trim()).toBeTruthy();
+  expect(String(app.description ?? "").trim()).toBeTruthy();
+  expect(String(app.url ?? "").trim()).toBeTruthy();
+  expect(String(app.applicationCategory ?? "").trim()).toBeTruthy();
+  expect(String(app.offers?.price)).toBe("0");
+});
+
+test("使い方と FAQ のセクションがある", async ({ page }) => {
+  await page.goto(APP_URL);
+  await expect(page.getByRole("heading", { name: "使い方" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "FAQ" })).toBeVisible();
+});
