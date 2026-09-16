@@ -162,11 +162,29 @@
     }
 
     .dot {
+      position: relative;
       width: 0.55rem;
       height: 0.55rem;
+      padding: 0;
+      margin: 0;
       border-radius: 50%;
       border: 1.5px solid var(--dot-empty);
       background: transparent;
+      appearance: none;
+      -webkit-appearance: none;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .dot::before {
+      content: "";
+      position: absolute;
+      inset: -0.35rem;
+    }
+
+    .dot:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
     }
 
     .dot.done {
@@ -275,7 +293,7 @@
         <ol>
           <li>習慣名を入力し、「追加」または Enter で登録する</li>
           <li>今日やったらチェックボックスをオンにする</li>
-          <li>直近7日のドットと連続日数バッジで継続を確認する</li>
+          <li>直近7日のドットを押して記録し忘れを直し、連続日数バッジで継続を確認する</li>
           <li>不要になった習慣は「削除」する</li>
         </ol>
       </section>
@@ -372,8 +390,7 @@
       render();
     }
 
-    function toggleCheck(id, checked) {
-      const day = todayKey();
+    function toggleCheck(id, day, checked) {
       const ids = Array.isArray(state.checks[day]) ? state.checks[day].slice() : [];
       const idx = ids.indexOf(id);
       if (checked && idx === -1) ids.push(id);
@@ -414,7 +431,7 @@
         checkbox.type = "checkbox";
         checkbox.checked = isCheckedOn(state, habit.id, today);
         checkbox.setAttribute("aria-label", `${habit.name}を今日実行済みにする`);
-        checkbox.addEventListener("change", () => toggleCheck(habit.id, checkbox.checked));
+        checkbox.addEventListener("change", () => toggleCheck(habit.id, today, checkbox.checked));
 
         const nameEl = document.createElement("span");
         nameEl.className = "habit-name";
@@ -424,8 +441,16 @@
         dots.className = "history-dots";
         dots.setAttribute("aria-label", "直近7日間の実行履歴");
         for (const day of days) {
-          const dot = document.createElement("span");
-          dot.className = "dot" + (isCheckedOn(state, habit.id, day) ? " done" : "");
+          const done = isCheckedOn(state, habit.id, day);
+          const dot = document.createElement("button");
+          dot.type = "button";
+          dot.className = "dot" + (done ? " done" : "");
+          dot.dataset.date = day;
+          dot.setAttribute(
+            "aria-label",
+            done ? `${habit.name}の${day}の実行済みを外す` : `${habit.name}の${day}を実行済みにする`,
+          );
+          dot.addEventListener("click", () => toggleCheck(habit.id, day, !done));
           dots.appendChild(dot);
         }
 

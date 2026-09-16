@@ -107,6 +107,83 @@ test("日付が変わると当日チェックは未チェックになり前日�
   expect(parsed.checks["2026-08-09"] ?? []).toEqual([]);
 });
 
+test("昨日の履歴ドットを押すと過去日のチェックを付け外しできリロード後も残る", async ({ page }) => {
+  await page.clock.install({ time: new Date("2026-08-08T12:00:00") });
+  await page.goto(APP_URL);
+
+  await page.locator("#habit-input").fill("運動");
+  await page.locator("#add-btn").click();
+
+  const yesterday = page.locator('.habit-item [data-date="2026-08-07"]');
+  await yesterday.click();
+  await expect(yesterday).toHaveClass(/done/);
+
+  const storedOn = await page.evaluate(() => localStorage.getItem("habit-tracker:v1"));
+  const parsedOn = JSON.parse(storedOn!);
+  expect(parsedOn.checks["2026-08-07"]).toHaveLength(1);
+
+  await page.reload();
+
+  const yesterdayAfterReload = page.locator('.habit-item [data-date="2026-08-07"]');
+  await expect(yesterdayAfterReload).toHaveClass(/done/);
+
+  await yesterdayAfterReload.click();
+  await expect(yesterdayAfterReload).not.toHaveClass(/done/);
+
+  const storedOff = await page.evaluate(() => localStorage.getItem("habit-tracker:v1"));
+  const parsedOff = JSON.parse(storedOff!);
+  expect(parsedOff.checks["2026-08-07"] ?? []).toEqual([]);
+});
+
+test("過去2日のドット補完が連続日数へ反映される", async ({ page }) => {
+  await page.clock.install({ time: new Date("2026-08-08T12:00:00") });
+  await page.goto(APP_URL);
+
+  await page.locator("#habit-input").fill("読書");
+  await page.locator("#add-btn").click();
+
+  await page.locator('.habit-item [data-date="2026-08-06"]').click();
+  await page.locator('.habit-item [data-date="2026-08-07"]').click();
+
+  await expect(page.locator(".habit-item input[type=checkbox]")).not.toBeChecked();
+  await expect(page.locator(".habit-item .streak-badge")).toHaveText("2日連続");
+
+  await page.locator(".habit-item input[type=checkbox]").check();
+  await expect(page.locator(".habit-item .streak-badge")).toHaveText("3日連続");
+});
+
+test("今日の履歴ドットとチェックボックスは同じ今日の記録を表す", async ({ page }) => {
+  await page.clock.install({ time: new Date("2026-08-08T12:00:00") });
+  await page.goto(APP_URL);
+
+  await page.locator("#habit-input").fill("瞑想");
+  await page.locator("#add-btn").click();
+
+  const todayDot = page.locator('.habit-item [data-date="2026-08-08"]');
+  const checkbox = page.locator(".habit-item input[type=checkbox]");
+
+  await todayDot.click();
+  await expect(checkbox).toBeChecked();
+  await expect(todayDot).toHaveClass(/done/);
+
+  await checkbox.uncheck();
+  await expect(checkbox).not.toBeChecked();
+  await expect(todayDot).not.toHaveClass(/done/);
+});
+
+test("過去日と今日を操作したあとも履歴ドットは7個のまま", async ({ page }) => {
+  await page.clock.install({ time: new Date("2026-08-08T12:00:00") });
+  await page.goto(APP_URL);
+
+  await page.locator("#habit-input").fill("日記");
+  await page.locator("#add-btn").click();
+
+  await page.locator('.habit-item [data-date="2026-08-07"]').click();
+  await page.locator('.habit-item [data-date="2026-08-08"]').click();
+
+  await expect(page.locator(".habit-item .history-dots .dot")).toHaveCount(7);
+});
+
 test("直近7日の履歴ドットと連続実行日数が表示される", async ({ page }) => {
   await page.addInitScript(() => {
     const pad = (n: number) => String(n).padStart(2, "0");
